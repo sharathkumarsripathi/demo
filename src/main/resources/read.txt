@@ -1,12 +1,12 @@
-**Transition to a Single Source of Truth: Data De-duplication Strategy**
+**Transitioning CIAM from Legacy Systems to Epic Identity with Prelude: Data De-duplication & Governance Strategy**
 
 ---
 
 ## **Slide 1: Title**
 
-**Transition to a Single Source of Truth: Data De-duplication & Governance Strategy**
+**Transitioning CIAM from Legacy Systems to Epic Identity with Prelude: Data De-duplication & Governance Strategy**
 
-* Ensuring accuracy, consistency, and trust in enterprise identity data
+* Ensuring accuracy, consistency, and trust in enterprise identity data during the migration journey
 
 ---
 
@@ -22,6 +22,7 @@
 ## **Slide 3: Transition State Overview**
 
 * Introduction of integration layers: **API Gateways**, **MDM**, **Analytical Datastores**
+* Prelude introduced as part of Epic ecosystem for initial registration workflows
 * Batch jobs and syncs reduce—but do not eliminate—duplicates
 * Coexistence of legacy and new systems during migration period
 * Temporary crosswalk tables to map legacy IDs to new **Epic Identity IDs**
@@ -30,8 +31,9 @@
 
 ## **Slide 4: Future State Vision**
 
-* Centralized **Epic Identity** and **MDM** as the single source of truth
-* All Epic modules and Quest systems consume identity data from one authoritative source
+* Centralized **Epic Identity** with **Prelude** handling registration and demographic updates
+* **MDM** as the single source of truth for identity and demographics
+* All Epic modules and Quest systems consume identity data from **Epic Identity**
 * Real-time and batch updates ensure system-wide consistency
 * Improved data accuracy, reduced maintenance, and enhanced user experience
 
@@ -64,13 +66,14 @@ Use **MDM** capabilities to:
 3. **Deduplicate**: Apply automated match/merge rules with MDM tools
 4. **Resolve Conflicts**: Automated for high-confidence matches, manual for ambiguous cases
 5. **Merge & Assign**: Create a single **Epic Identity (EID)** per individual
-6. **Propagate**: Update all dependent systems to reference unified EIDs
+6. **Propagate**: Update all dependent systems, including Prelude, to reference unified EIDs
 
 ---
 
 ## **Slide 8: Maintaining a Single Source of Truth**
 
 * Designate **Epic Identity / MDM** as the sole authoritative identity store
+* Prelude as the single entry point for registration and demographic capture
 * Enforce write operations through standardized APIs
 * Implement both real-time and scheduled syncs
 * Apply validation rules at entry points to prevent new duplicates
@@ -88,7 +91,7 @@ Use **MDM** capabilities to:
 
 ## **Slide 10: Summary & Next Steps**
 
-* A well-governed **Epic Identity + MDM** framework is essential for high-quality, reliable identity data
+* A well-governed **Epic Identity + Prelude + MDM** framework is essential for high-quality, reliable identity data
 * Deduplication is not a one-time task—it’s an ongoing process
 * Next Steps:
 
@@ -103,7 +106,7 @@ Use **MDM** capabilities to:
 
 ```
 [User] --> [Access Channel (Web/Mobile/Portal)] --> [CIAM IdP (Entra/PingFederate)]
-[CIAM IdP] --> [API Gateway] --> [Epic Identity (SoT)] --> [Target App (MyQuest/Scheduler)]
+[CIAM IdP] --> [API Gateway] --> [Epic Identity (SoT) + Prelude] --> [Target App (MyQuest/Scheduler)]
 [API Gateway] --> [Audit/Consent]
 ```
 
@@ -112,8 +115,8 @@ Use **MDM** capabilities to:
 ## **Slide 12: Draw\.io Style Diagram – End-to-End Flow (MyQuest / Appointment Scheduler)**
 
 ```
-User --> MyQuest OR Appointment Scheduler --> API Gateway --> Epic Identity (SoT)
-Epic Identity --> Orchestration Layer --> Beaker (Orders/Results)
+User --> MyQuest OR Appointment Scheduler --> API Gateway --> Epic Identity (SoT) + Prelude
+Epic Identity + Prelude --> Orchestration Layer --> Beaker (Orders/Results)
 Orchestration Layer --> Cadence (Scheduling)
 Orchestration Layer --> Billing (Payer Platform)
 Orchestration Layer --> Notifications (Hello World/SFMC)
