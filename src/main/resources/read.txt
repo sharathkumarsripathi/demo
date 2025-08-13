@@ -1,0 +1,51 @@
+Slide 1: Title
+Transition to a Single Source of Truth: Data De-duplication Strategy
+
+Slide 2: Current State Overview
+Multiple databases: MyQuest DB, PRS DB, COS DB
+Duplicate demographic and identity records across systems
+No unified source of truth
+Data inconsistencies and operational inefficiencies
+
+Slide 3: Transition State Overview
+Introduction of integration layers (API Gateways, MDM, Analytical Datastores)
+Batch jobs and data syncs between systems
+Still potential for duplicate records during transition
+
+Slide 4: Future State Vision
+Centralized data layer (MDM, Analytical Datastores)
+Single source of truth for identity and demographic data
+Streamlined access for all modules and Quest systems
+
+Slide 5: Challenges in the Transition Phase
+Identifying duplicate records across MyQuest DB, PRS DB, COS DB
+Ensuring data integrity during migration
+Maintaining system availability and data consistency
+
+Slide 6: Identifying Duplicate Records
+Use Master Data Management (MDM) tools to:
+Match records using unique identifiers (EID, PRS ID, MQID)
+Apply fuzzy matching for names, DOB, contact info
+Generate duplicate reports for manual review
+
+Slide 7: Data De-duplication Process
+Extract data from all relevant databases
+Run deduplication algorithms (MDM, custom scripts)
+Review and resolve conflicts (automated and manual)
+Merge records and assign a single unique identifier (EID)
+Update all downstream systems to reference the unified record
+
+Slide 8: Maintaining a Single Source of Truth
+Designate the MDM/Analytical Datastore as the authoritative source
+Implement real-time and batch syncs to keep all systems updated
+Enforce data governance policies for data entry and updates
+
+Slide 9: Data Governance and Ongoing Maintenance
+Regular audits for duplicates
+Automated alerts for potential new duplicates
+Continuous improvement of matching algorithms
+
+Slide 10: Summary & Next Steps
+Transition requires careful planning and robust tooling
+MDM is key to resolving duplicates and establishing a single source of truth
+Ongoing governance ensures data quality in the future state
