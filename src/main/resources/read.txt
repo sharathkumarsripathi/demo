@@ -1,128 +1,38 @@
-**Transitioning CIAM from Legacy Systems to Epic Identity with Prelude: Data De-duplication & Governance Strategy**
+Here’s a clean, deck-ready note for the given **CAS Login → PRS DB** authentication flow:
 
 ---
 
-## **Slide 1: Title**
+## **CAS Login – PRS DB Authentication Flow**
 
-**Transitioning CIAM from Legacy Systems to Epic Identity with Prelude: Data De-duplication & Governance Strategy**
+**Purpose:**
+Authenticate users against the PRS Database using CAS (Central Authentication Service) login.
 
-* Ensuring accuracy, consistency, and trust in enterprise identity data during the migration journey
+**Flow Steps:**
 
----
+1. **User Initiates Login**
 
-## **Slide 2: Current State Overview**
+   * User accesses the application and is redirected to **CAS Login** page.
 
-* Multiple disconnected databases: **MyQuest DB**, **PRS DB**, **COS DB**
-* Duplicate and conflicting demographic/identity records across systems
-* No authoritative source of truth
-* Data inconsistencies leading to operational inefficiencies and user frustration
+2. **Authentication Request**
 
----
+   * CAS Login service sends an authentication query to **PRS DB** with provided credentials.
 
-## **Slide 3: Transition State Overview**
+3. **Credential Verification**
 
-* Introduction of integration layers: **API Gateways**, **MDM**, **Analytical Datastores**
-* Prelude introduced as part of Epic ecosystem for initial registration workflows
-* Batch jobs and syncs reduce—but do not eliminate—duplicates
-* Coexistence of legacy and new systems during migration period
-* Temporary crosswalk tables to map legacy IDs to new **Epic Identity IDs**
+   * PRS DB validates the credentials against stored user records.
 
----
+4. **Response to CAS**
 
-## **Slide 4: Future State Vision**
+   * **Success:** User credentials are valid; CAS establishes authenticated session.
+   * **Failure:** Invalid credentials; CAS returns an error message to the user.
 
-* Centralized **Epic Identity** with **Prelude** handling registration and demographic updates
-* **MDM** as the single source of truth for identity and demographics
-* All Epic modules and Quest systems consume identity data from **Epic Identity**
-* Real-time and batch updates ensure system-wide consistency
-* Improved data accuracy, reduced maintenance, and enhanced user experience
+**Key Points for Deck:**
+
+* PRS DB is the **source of truth** for authentication in current state.
+* CAS acts as the **authentication broker** between user and PRS DB.
+* No integration here with Epic Identity or Prelude — this is legacy CIAM authentication.
+* In the **future state**, PRS DB authentication will be deprecated in favor of **Epic Identity** with Prelude handling registration and login workflows.
 
 ---
 
-## **Slide 5: Challenges in the Transition Phase**
-
-* Detecting and reconciling duplicate records across multiple databases
-* Preserving data integrity during incremental migrations
-* Maintaining high availability while refactoring dependencies
-* Managing change for downstream systems reliant on legacy identifiers
-
----
-
-## **Slide 6: Identifying Duplicate Records**
-
-Use **MDM** capabilities to:
-
-* Match records using unique IDs (**EID**, **PRS ID**, **MQID**)
-* Apply fuzzy matching on names, DOB, contact info, and addresses
-* Standardize formats before matching (name casing, phone normalization)
-* Generate exception and conflict reports for human review
-
----
-
-## **Slide 7: Data De-duplication Process**
-
-1. **Extract**: Pull records from MyQuest DB, PRS DB, COS DB
-2. **Profile**: Identify overlaps, anomalies, and quality issues
-3. **Deduplicate**: Apply automated match/merge rules with MDM tools
-4. **Resolve Conflicts**: Automated for high-confidence matches, manual for ambiguous cases
-5. **Merge & Assign**: Create a single **Epic Identity (EID)** per individual
-6. **Propagate**: Update all dependent systems, including Prelude, to reference unified EIDs
-
----
-
-## **Slide 8: Maintaining a Single Source of Truth**
-
-* Designate **Epic Identity / MDM** as the sole authoritative identity store
-* Prelude as the single entry point for registration and demographic capture
-* Enforce write operations through standardized APIs
-* Implement both real-time and scheduled syncs
-* Apply validation rules at entry points to prevent new duplicates
-
----
-
-## **Slide 9: Data Governance and Ongoing Maintenance**
-
-* Schedule regular audits for duplicate detection
-* Automated alerts for suspected duplicates
-* Version control and change logs for all identity records
-* Continuous refinement of matching algorithms and governance policies
-
----
-
-## **Slide 10: Summary & Next Steps**
-
-* A well-governed **Epic Identity + Prelude + MDM** framework is essential for high-quality, reliable identity data
-* Deduplication is not a one-time task—it’s an ongoing process
-* Next Steps:
-
-  * Finalize field-level match/merge rules
-  * Build data stewardship workflows
-  * Train teams on governance and conflict resolution
-  * Monitor and continuously improve matching accuracy
-
----
-
-## **Slide 11: Draw\.io Style Diagram – SSO Flow**
-
-```
-[User] --> [Access Channel (Web/Mobile/Portal)] --> [CIAM IdP (Entra/PingFederate)]
-[CIAM IdP] --> [API Gateway] --> [Epic Identity (SoT) + Prelude] --> [Target App (MyQuest/Scheduler)]
-[API Gateway] --> [Audit/Consent]
-```
-
----
-
-## **Slide 12: Draw\.io Style Diagram – End-to-End Flow (MyQuest / Appointment Scheduler)**
-
-```
-User --> MyQuest OR Appointment Scheduler --> API Gateway --> Epic Identity (SoT) + Prelude
-Epic Identity + Prelude --> Orchestration Layer --> Beaker (Orders/Results)
-Orchestration Layer --> Cadence (Scheduling)
-Orchestration Layer --> Billing (Payer Platform)
-Orchestration Layer --> Notifications (Hello World/SFMC)
-Orchestration Layer --> Analytics (Caboodle/BigQuery)
-Orchestration Layer --> Audit/Logging
-Responses --> MyQuest OR Appointment Scheduler --> User
-```
-
-These diagrams are ready for import into draw\.io, Lucidchart, or Visio for further styling and connector logic.
+If you’d like, I can also add a **side-by-side diagram** showing this **current state** flow next to the **future state (Epic Identity + Prelude)** authentication flow for better transition storytelling in your deck.
