@@ -1,38 +1,126 @@
-Here’s a clean, deck-ready note for the given **CAS Login → PRS DB** authentication flow:
+main_paintent_profile table:
 
----
+COLUMN_NAME	DATA_TYPE	DATA_LENGTH	NULLABLE
+TIME_ZONE	VARCHAR2	100	Y
+ALERT_NOTIF_EMAIL	VARCHAR2	128	Y
+ALERT_IND	VARCHAR2	1	Y
+ALERT_NOTIF_HOURS	NUMBER	22	Y
+BB_LINK_IND	VARCHAR2	1	Y
+ACTIVE_IND	VARCHAR2	1	Y
+USER_ID	VARCHAR2	100	Y
+PRS_FIRST_NAME	VARCHAR2	32	Y
+PRS_LAST_NAME	VARCHAR2	75	Y
+PRS_EMAIL_ID	VARCHAR2	256	Y
+PRS_DATE_OF_BIRTH	DATE	7	Y
+PRS_HIPAA_ACCEPT	VARCHAR2	32	Y
+PRS_ADDRESS_1	VARCHAR2	256	Y
+PRS_ADDRESS_2	VARCHAR2	256	Y
+PRS_CITY	VARCHAR2	100	Y
+PRS_STATE	VARCHAR2	16	Y
+PRS_ZIP	VARCHAR2	16	Y
+ACCESS_CODE	CHAR	1	Y
+DIRECT_ADDRESS	VARCHAR2	255	Y
+EID	NUMBER	22	Y
+PRS_GENDER	CHAR	1	Y
+OPT_IN_DATE	DATE	7	Y
+PRS_KBA_IND	VARCHAR2	20	Y
+PRS_PHONE	VARCHAR2	10	Y
+PRS_SECONDARY_PHONE	VARCHAR2	10	Y
+PARENT_PATIENT_ID	NUMBER	22	Y
+PRS_VERIFIED_SUBACCOUNT	VARCHAR2	1	Y
+RELATIONSHIP_CATEGORY	VARCHAR2	50	Y
+EMAIL_VERIFICATION	CHAR	1	N
+PHONE_TYPE	CHAR	1	Y
+GENDER_PREFERENCE	VARCHAR2	60	Y
+RACE	VARCHAR2	60	Y
+ETHNICITY	VARCHAR2	60	Y
+SEXUAL_ORIENTATION	VARCHAR2	60	Y
+PATIENT_ID	NUMBER	22	N
+PRS_PROFILE_ID	VARCHAR2	10	Y
+ENABLE_SS_MED	VARCHAR2	1	Y
+CREATED_BY	VARCHAR2	100	Y
+DATE_CREATED	TIMESTAMP(0)	7	Y
+MODIFIED_BY	VARCHAR2	100	Y
+DATE_MODIFIED	TIMESTAMP(0)	7	Y
+WITHINGS_IND	VARCHAR2	1	Y
+EMAIL_IND	VARCHAR2	1	Y
 
-## **CAS Login – PRS DB Authentication Flow**
 
-**Purpose:**
-Authenticate users against the PRS Database using CAS (Central Authentication Service) login.
+------------------------------------------------
+patient_profile table:
 
-**Flow Steps:**
+COLUMN_NAME	DATA_TYPE	DATA_LENGTH	NULLABLE
+PATIENT_PROFILES_ID	NUMBER	22	N
+STATUS_CODE	VARCHAR2	10	Y
+PAT_PROFILE_TYPE_ID	NUMBER	22	N
+LAST_NAME	VARCHAR2	75	N
+FIRST_NAME	VARCHAR2	35	N
+LOGIN_ID	VARCHAR2	100	N
+PATIENT_LOGIN_PW	VARCHAR2	100	N
+LOGIN_ENABLED	CHAR	1	N
+INIT_PW_IND	CHAR	1	N
+MIDDLE_INIT	VARCHAR2	4	Y
+MAIDEN_NAME	VARCHAR2	50	Y
+DATE_OF_BIRTH	DATE	7	Y
+EMPI_MEMRECNO	VARCHAR2	50	Y
+SOCIAL_SECURITY_NUM	VARCHAR2	100	Y
+DATE_CREATED	DATE	7	Y
+DATE_MODIFIED	DATE	7	Y
+MODIFIED_BY	VARCHAR2	30	Y
+CREATED_BY	VARCHAR2	30	Y
+PW_EXPIRE_ENABLED_IND	CHAR	1	Y
+PW_EXPIRE_DAYS	NUMBER	22	Y
+PW_RETRY_COUNT	NUMBER	22	Y
+GENDER_CODE	VARCHAR2	1	Y
+LAST_LOGIN_DATE	DATE	7	Y
+FUTURE_ACTIVE_DATE	DATE	7	Y
+FUTURE_INACTIVE_DATE	DATE	7	Y
+PW_CREATED_DATE	DATE	7	Y
+PAT_PROFILE_ACTIVE_IND	CHAR	1	N
+DEMOGRAPHIC_AUTH_IND	VARCHAR2	1	N
+PAT_ACCOUNT_CANCEL_IND	VARCHAR2	1	N
+SOURCE_APP_NAME	VARCHAR2	30	Y
+PAT_QPID	NUMBER	22	Y
+QPID_STATUS_IND	VARCHAR2	1	Y
+SECURITY_ANS_RETRY_COUNT	NUMBER	22	Y
+CASE_SENSITIVE_IND	VARCHAR2	1	N
+BFW_SENT_STATUS	NUMBER	22	Y
+HUB_SYNC_FLAG	CHAR	1	Y
+EID_DATE_MODIFIED	DATE	7	Y
+PASSWORD_SALT	VARCHAR2	40	Y
+DATE_UPDATED	DATE	7	Y
 
-1. **User Initiates Login**
+_______________
 
-   * User accesses the application and is redirected to **CAS Login** page.
+dues_person table
 
-2. **Authentication Request**
+person_id	bigint		NO
+person_type_id	int		YES
+patient_master_id	varchar	50	YES
+first_name	varchar	50	YES
+middle_name	varchar	30	YES
+last_name	varchar	75	YES
+gender_code	varchar	10	YES
+dob	date		YES
+race	varchar	60	YES
+ethnicity	varchar	60	YES
+address_line_1	varchar	75	YES
+address_line_2	varchar	75	YES
+city_name	varchar	50	YES
+state_abbrev	varchar	30	YES
+zip_code	varchar	50	YES
+country_name	varchar	50	YES
+patient_eid	decimal		YES
+clintrial_id	varchar	100	YES
+person_npi	varchar	10	YES
+person_active_ind	varchar	1	NO
+tot_eid_found	int		YES
+signature	varchar	200	YES
+date_created	datetime		YES
+created_by	varchar	50	YES
+date_modified	timestamp		YES
+modified_by	varchar	50	YES
 
-   * CAS Login service sends an authentication query to **PRS DB** with provided credentials.
 
-3. **Credential Verification**
+----------------------
 
-   * PRS DB validates the credentials against stored user records.
-
-4. **Response to CAS**
-
-   * **Success:** User credentials are valid; CAS establishes authenticated session.
-   * **Failure:** Invalid credentials; CAS returns an error message to the user.
-
-**Key Points for Deck:**
-
-* PRS DB is the **source of truth** for authentication in current state.
-* CAS acts as the **authentication broker** between user and PRS DB.
-* No integration here with Epic Identity or Prelude — this is legacy CIAM authentication.
-* In the **future state**, PRS DB authentication will be deprecated in favor of **Epic Identity** with Prelude handling registration and login workflows.
-
----
-
-If you’d like, I can also add a **side-by-side diagram** showing this **current state** flow next to the **future state (Epic Identity + Prelude)** authentication flow for better transition storytelling in your deck.
