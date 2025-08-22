@@ -1,0 +1,447 @@
+# 2) Load the 3 sources
+
+## 2.1 MYQUEST.MAIN\_PATIENT\_PROFILES → STG
+
+```sql
+INSERT /*+ APPEND */ INTO STG_PERSON (
+  source_system, source_pk, created_at_src, modified_at_src,
+  first_name, last_name, dob, gender_code,
+  email, email_verified, phone_e164, phone_digits, phone_last7,
+  address_line_1, address_line_2, city_name, state_abbrev, zip_code, country_name,
+  prs_profile_id, patient_id, empi, eid, patient_eid, user_id,
+  email_norm, first_up, last_up, zip_up, street_key
+)
+SELECT
+  'MYQUEST',
+  TO_CHAR(m.PATIENT_ID),
+  CAST(m.DATE_CREATED  AS TIMESTAMP),
+  CAST(m.DATE_MODIFIED AS TIMESTAMP),
+
+  INITCAP(TRIM(m.PRS_FIRST_NAME)),
+  INITCAP(TRIM(m.PRS_LAST_NAME)),
+  m.PRS_DATE_OF_BIRTH,
+  m.PRS_GENDER,
+
+  CASE WHEN REGEXP_LIKE(LOWER(m.PRS_EMAIL_ID),'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+       THEN LOWER(m.PRS_EMAIL_ID) END,
+  m.EMAIL_VERIFICATION,
+
+  CASE
+    WHEN m.PRS_PHONE IS NOT NULL THEN
+      CASE
+        WHEN LENGTH(REGEXP_REPLACE(m.PRS_PHONE,'\D'))=10
+          THEN '+1'||REGEXP_REPLACE(m.PRS_PHONE,'\D')
+        WHEN LENGTH(REGEXP_REPLACE(m.PRS_PHONE,'\D'))=11
+             AND SUBSTR(REGEXP_REPLACE(m.PRS_PHONE,'\D'),1,1)='1'
+          THEN '+1'||SUBSTR(REGEXP_REPLACE(m.PRS_PHONE,'\D'),2)
+        WHEN LENGTH(REGEXP_REPLACE(m.PRS_PHONE,'\D'))>0
+          THEN '+'||REGEXP_REPLACE(m.PRS_PHONE,'\D')
+      END
+  END,
+  REGEXP_REPLACE(NVL(m.PRS_PHONE,m.PRS_SECONDARY_PHONE), '\D'),
+  SUBSTR(REGEXP_REPLACE(NVL(m.PRS_PHONE,m.PRS_SECONDARY_PHONE), '\D'), -7),
+
+  TRIM(m.PRS_ADDRESS_1), TRIM(m.PRS_ADDRESS_2),
+  TRIM(m.PRS_CITY), TRIM(m.PRS_STATE), TRIM(m.PRS_ZIP), NULL,
+
+  m.PRS_PROFILE_ID, TO_CHAR(m.PATIENT_ID), NULL, TO_CHAR(m.EID), NULL, m.USER_ID,
+
+  CASE WHEN REGEXP_LIKE(LOWER(m.PRS_EMAIL_ID),'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+       THEN LOWER(m.PRS_EMAIL_ID) END,
+  UPPER(TRIM(REGEXP_REPLACE(m.PRS_FIRST_NAME,'\s+',' '))),
+  UPPER(TRIM(REGEXP_REPLACE(m.PRS_LAST_NAME,'\s+',' '))),
+  UPPER(TRIM(m.PRS_ZIP)),
+  NVL(REGEXP_SUBSTR(m.PRS_ADDRESS_1,'^\d+'),'') ||'|'||
+  NVL(REGEXP_SUBSTR(UPPER(m.PRS_ADDRESS_1),'[A-Z]+'),'')
+FROM MAIN_PATIENT_PROFILES@MYQUEST_DB m;
+```
+
+## 2.2 PRS.PATIENT\_PROFILES → STG  (note: `LOGIN_ID` kept only as lineage)
+
+```sql
+INSERT /*+ APPEND */ INTO STG_PERSON (
+  source_system, source_pk, created_at_src, modified_at_src,
+  first_name, middle_name, last_name, dob, gender_code,
+  email, email_verified, phone_e164, phone_digits, phone_last7,
+  prs_profile_id, patient_id, empi, eid, patient_eid, user_id,
+  email_norm, first_up, middle_up, last_up
+)
+SELECT
+  'PRS',
+  TO_CHAR(p.PATIENT_PROFILES_ID),
+  CAST(p.DATE_CREATED AS TIMESTAMP),
+  CAST(NVL(p.DATE_MODIFIED, p.DATE_UPDATED) AS TIMESTAMP),
+
+  INITCAP(TRIM(p.FIRST_NAME)),
+  INITCAP(TRIM(p.MIDDLE_INIT)),
+  INITCAP(TRIM(p.LAST_NAME)),
+  p.DATE_OF_BIRTH,
+  p.GENDER_CODE,
+
+  NULL, NULL, NULL, NULL, NULL,                        -- no email/phone in PRS feed
+  TO_CHAR(p.PATIENT_PROFILES_ID),
+  NULL,
+  p.EMPI_MEMRECNO,
+  NULL,
+  NULL,
+  p.LOGIN_ID,                                          -- lineage only
+
+  NULL,
+  UPPER(TRIM(REGEXP_REPLACE(p.FIRST_NAME,'\s+',' '))),
+  UPPER(TRIM(REGEXP_REPLACE(p.MIDDLE_INIT,'\s+',' '))),
+  UPPER(TRIM(REGEXP_REPLACE(p.LAST_NAME,'\s+',' ')))
+FROM PATIENT_PROFILES@PRS_DB p;
+```
+
+## 2.3 ECPM.DUES\_PERSONS → STG  (uses `patient_id` per your note)
+
+```sql
+INSERT /*+ APPEND */ INTO STG_PERSON (
+  source_system, source_pk, created_at_src, modified_at_src,
+  first_name, middle_name, last_name, dob, gender_code,
+  address_line_1, address_line_2, city_name, state_abbrev, zip_code, country_name,
+  prs_profile_id, patient_id, empi, eid, patient_eid,
+  first_up, middle_up, last_up, zip_up, street_key
+)
+SELECT
+  'ECPM',
+  TO_CHAR(d.person_id),
+  CAST(d.date_created AS TIMESTAMP),
+  CAST(d.date_modified AS TIMESTAMP),
+
+  INITCAP(TRIM(d.first_name)),
+  INITCAP(TRIM(d.middle_name)),
+  INITCAP(TRIM(d.last_name)),
+  CAST(d.dob AS DATE),
+  d.gender_code,
+
+  TRIM(d.address_line_1), TRIM(d.address_line_2),
+  TRIM(d.city_name), TRIM(d.state_abbrev), TRIM(d.zip_code), TRIM(d.country_name),
+
+  NULL,
+  TO_CHAR(d.patient_id),        -- deterministic relation to MYQUEST
+  NULL, NULL, TO_CHAR(d.patient_eid),
+
+  UPPER(TRIM(REGEXP_REPLACE(d.first_name,'\s+',' '))),
+  UPPER(TRIM(REGEXP_REPLACE(d.middle_name,'\s+',' '))),
+  UPPER(TRIM(REGEXP_REPLACE(d.last_name,'\s+',' '))),
+  UPPER(TRIM(d.zip_code)),
+  NVL(REGEXP_SUBSTR(d.address_line_1,'^\d+'),'') ||'|'||
+  NVL(REGEXP_SUBSTR(UPPER(d.address_line_1),'[A-Z]+'),'')
+FROM DUES_PERSONS@ECPM_DB d;
+```
+
+---
+
+# 3) Keys table (deterministic + blocking)
+
+```sql
+CREATE TABLE STG_PERSON_KEYS (
+  stg_id   NUMBER NOT NULL,
+  key_type VARCHAR2(30) NOT NULL,   -- 'PRS_PROFILE_ID','PATIENT_ID','EMAIL','PHONE7','NAMEZIP','STREETNAME'
+  key_val  VARCHAR2(300) NOT NULL
+);
+
+CREATE INDEX ix_keys_val ON STG_PERSON_KEYS(key_type, key_val);
+CREATE INDEX ix_keys_stg ON STG_PERSON_KEYS(stg_id);
+
+-- Deterministic relations
+INSERT INTO STG_PERSON_KEYS SELECT stg_id,'PRS_PROFILE_ID',prs_profile_id FROM STG_PERSON WHERE prs_profile_id IS NOT NULL;
+INSERT INTO STG_PERSON_KEYS SELECT stg_id,'PATIENT_ID',   patient_id      FROM STG_PERSON WHERE patient_id      IS NOT NULL;
+
+-- Strong exacts
+INSERT INTO STG_PERSON_KEYS SELECT stg_id,'EMAIL',  email_norm  FROM STG_PERSON WHERE email_norm  IS NOT NULL;
+INSERT INTO STG_PERSON_KEYS SELECT stg_id,'PHONE7', phone_last7 FROM STG_PERSON WHERE phone_last7 IS NOT NULL;
+
+-- Blocking keys for fuzzy (name+zip, street+last)
+INSERT INTO STG_PERSON_KEYS
+SELECT stg_id,'NAMEZIP', SUBSTR(last_up,1,1)||'|'||SUBSTR(first_up,1,1)||'|'||zip_up
+FROM STG_PERSON
+WHERE last_up IS NOT NULL AND first_up IS NOT NULL AND zip_up IS NOT NULL;
+
+INSERT INTO STG_PERSON_KEYS
+SELECT stg_id,'STREETNAME', street_key||'|'||last_up
+FROM STG_PERSON
+WHERE street_key IS NOT NULL AND last_up IS NOT NULL;
+
+-- Init component id
+UPDATE STG_PERSON SET comp_id = stg_id;
+COMMIT;
+```
+
+---
+
+# 4) Connected components (merge via shared keys)
+
+```sql
+DECLARE
+  v_changes NUMBER := 1;
+  v_iter    NUMBER := 0;
+BEGIN
+  WHILE v_changes > 0 AND v_iter < 20 LOOP
+    v_iter := v_iter + 1;
+    MERGE INTO STG_PERSON s
+    USING (
+      SELECT k1.stg_id AS cid, MIN(s2.comp_id) AS min_comp
+      FROM STG_PERSON_KEYS k1
+      JOIN STG_PERSON_KEYS k2
+        ON k1.key_type = k2.key_type AND k1.key_val = k2.key_val
+      JOIN STG_PERSON s2
+        ON s2.stg_id = k2.stg_id
+      GROUP BY k1.stg_id
+    ) x
+    ON (s.stg_id = x.cid)
+    WHEN MATCHED THEN UPDATE SET s.comp_id = LEAST(s.comp_id, x.min_comp)
+      WHERE s.comp_id > x.min_comp;
+    v_changes := SQL%ROWCOUNT;
+    COMMIT;
+  END LOOP;
+END;
+/
+```
+
+---
+
+# 5) Fuzzy logic (phone, address, first/middle/last, email, DOB)
+
+## 5.1 Candidate pairs within blocks
+
+```sql
+CREATE TABLE STG_MATCH_CANDIDATES AS
+SELECT DISTINCT LEAST(a.stg_id,b.stg_id) stg_a,
+                GREATEST(a.stg_id,b.stg_id) stg_b
+FROM STG_PERSON_KEYS k
+JOIN STG_PERSON a ON a.stg_id = k.stg_id
+JOIN STG_PERSON b ON b.stg_id IN (
+  SELECT stg_id FROM STG_PERSON_KEYS
+  WHERE key_type = k.key_type AND key_val = k.key_val
+)
+WHERE a.stg_id < b.stg_id
+  AND k.key_type IN ('EMAIL','PHONE7','NAMEZIP','STREETNAME');
+```
+
+## 5.2 Similarities + **dynamic weights** (don’t penalize missing fields)
+
+```sql
+ALTER TABLE STG_MATCH_CANDIDATES ADD (
+  score      NUMBER(5,4),
+  name_sim   NUMBER(5,2),
+  mid_sim    NUMBER(5,2),
+  dob_sim    NUMBER(5,2),
+  addr_sim   NUMBER(5,2),
+  email_sim  NUMBER(5,2),
+  phone_sim  NUMBER(5,2)
+);
+
+MERGE INTO STG_MATCH_CANDIDATES t
+USING (
+  SELECT c.stg_a, c.stg_b,
+         -- Names (first/last): Jaro-Winkler avg
+         ( UTL_MATCH.JARO_WINKLER_SIMILARITY(a.first_up, b.first_up)
+         + UTL_MATCH.JARO_WINKLER_SIMILARITY(a.last_up,  b.last_up) )/2 AS name_sim_raw,
+
+         -- Middle name (neutral if missing)
+         CASE
+           WHEN a.middle_up IS NOT NULL AND b.middle_up IS NOT NULL THEN
+             UTL_MATCH.JARO_WINKLER_SIMILARITY(a.middle_up, b.middle_up)
+           ELSE 100
+         END AS mid_sim_raw,
+
+         -- DOB exact / ±1 day
+         CASE
+           WHEN a.dob IS NOT NULL AND b.dob IS NOT NULL THEN
+             CASE WHEN a.dob = b.dob THEN 100
+                  WHEN ABS(a.dob - b.dob) <= 1 THEN 85
+                  ELSE 0 END
+           ELSE 0
+         END AS dob_sim_raw,
+
+         -- Address: line1 edit-distance + city/zip bonus
+         LEAST(100,
+           0.7*UTL_MATCH.EDIT_DISTANCE_SIMILARITY(NVL(a.address_line_1,''), NVL(b.address_line_1,''))
+         + 0.15*UTL_MATCH.JARO_WINKLER_SIMILARITY(NVL(a.city_name,''), NVL(b.city_name,''))
+         + 0.15*CASE WHEN NVL(a.zip_up,'') = NVL(b.zip_up,'') AND a.zip_up IS NOT NULL THEN 100 ELSE 0 END
+         ) AS addr_sim_raw,
+
+         -- Email exact / same user part
+         CASE WHEN a.email_norm IS NOT NULL AND a.email_norm = b.email_norm THEN 100
+              WHEN a.email_norm IS NOT NULL AND b.email_norm IS NOT NULL
+               AND SUBSTR(a.email_norm,1,INSTR(a.email_norm,'@')-1)
+                   = SUBSTR(b.email_norm,1,INSTR(b.email_norm,'@')-1)
+              THEN 70 ELSE 0 END AS email_sim_raw,
+
+         -- Phone exact / last7
+         CASE WHEN a.phone_digits IS NOT NULL AND a.phone_digits = b.phone_digits THEN 100
+              WHEN a.phone_last7  IS NOT NULL AND a.phone_last7  = b.phone_last7  THEN 80
+              ELSE 0 END AS phone_sim_raw,
+
+         -- Dynamic weights (only count features present on BOTH sides)
+         CASE WHEN a.first_up IS NOT NULL AND b.first_up IS NOT NULL
+                AND a.last_up IS NOT NULL AND b.last_up IS NOT NULL
+              THEN 0.30 ELSE 0 END AS w_name,    -- first+last
+         CASE WHEN a.dob IS NOT NULL AND b.dob IS NOT NULL
+              THEN 0.30 ELSE 0 END AS w_dob,
+         CASE WHEN (a.address_line_1 IS NOT NULL OR a.city_name IS NOT NULL OR a.zip_up IS NOT NULL)
+                AND (b.address_line_1 IS NOT NULL OR b.city_name IS NOT NULL OR b.zip_up IS NOT NULL)
+              THEN 0.15 ELSE 0 END AS w_addr,
+         CASE WHEN a.email_norm IS NOT NULL AND b.email_norm IS NOT NULL
+              THEN 0.15 ELSE 0 END AS w_email,
+         CASE WHEN (a.phone_digits IS NOT NULL OR a.phone_last7 IS NOT NULL)
+                AND (b.phone_digits IS NOT NULL OR b.phone_last7 IS NOT NULL)
+              THEN 0.10 ELSE 0 END AS w_phone,
+         CASE WHEN a.middle_up IS NOT NULL AND b.middle_up IS NOT NULL
+              THEN 0.10 ELSE 0 END AS w_mid     -- small bonus
+  FROM STG_MATCH_CANDIDATES c
+  JOIN STG_PERSON a ON a.stg_id = c.stg_a
+  JOIN STG_PERSON b ON b.stg_id = c.stg_b
+) x
+ON (t.stg_a = x.stg_a AND t.stg_b = x.stg_b)
+WHEN MATCHED THEN UPDATE SET
+  t.name_sim  = ROUND(x.name_sim_raw,2),
+  t.mid_sim   = ROUND(x.mid_sim_raw,2),
+  t.dob_sim   = ROUND(x.dob_sim_raw,2),
+  t.addr_sim  = ROUND(x.addr_sim_raw,2),
+  t.email_sim = ROUND(x.email_sim_raw,2),
+  t.phone_sim = ROUND(x.phone_sim_raw,2),
+  t.score     = ROUND(
+                  CASE
+                    WHEN (x.w_name+x.w_dob+x.w_addr+x.w_email+x.w_phone+x.w_mid) > 0 THEN
+                      ( x.w_name*(x.name_sim_raw/100)
+                      + x.w_mid *(x.mid_sim_raw /100)
+                      + x.w_dob *(x.dob_sim_raw /100)
+                      + x.w_addr*(x.addr_sim_raw/100)
+                      + x.w_email*(x.email_sim_raw/100)
+                      + x.w_phone*(x.phone_sim_raw/100)
+                      )
+                      /
+                      (x.w_name+x.w_mid+x.w_dob+x.w_addr+x.w_email+x.w_phone)
+                    ELSE 0
+                  END
+                ,4);
+```
+
+**Thresholds & reinforcement**
+
+```sql
+-- Strong fuzzy matches (score ≥ 0.90): add synthetic links and re-cluster
+INSERT INTO STG_PERSON_KEYS (stg_id, key_type, key_val)
+SELECT stg_a, 'PAIR', TO_CHAR(stg_b) FROM STG_MATCH_CANDIDATES WHERE score >= 0.90
+UNION ALL
+SELECT stg_b, 'PAIR', TO_CHAR(stg_a) FROM STG_MATCH_CANDIDATES WHERE score >= 0.90;
+
+-- Re-run the connected-components step once to absorb these links
+DECLARE
+  v_changes NUMBER := 1;
+  v_iter    NUMBER := 0;
+BEGIN
+  WHILE v_changes > 0 AND v_iter < 10 LOOP
+    v_iter := v_iter + 1;
+    MERGE INTO STG_PERSON s
+    USING (
+      SELECT k1.stg_id AS cid, MIN(s2.comp_id) AS min_comp
+      FROM STG_PERSON_KEYS k1
+      JOIN STG_PERSON_KEYS k2
+        ON k1.key_type = k2.key_type AND k1.key_val = k2.key_val
+      JOIN STG_PERSON s2
+        ON s2.stg_id = k2.stg_id
+      GROUP BY k1.stg_id
+    ) x
+    ON (s.stg_id = x.cid)
+    WHEN MATCHED THEN UPDATE SET s.comp_id = LEAST(s.comp_id, x.min_comp)
+      WHERE s.comp_id > x.min_comp;
+    v_changes := SQL%ROWCOUNT;
+    COMMIT;
+  END LOOP;
+END;
+/
+```
+
+> If you want a manual review queue for borderline pairs (e.g., `0.75–0.89`), simply `CREATE TABLE REVIEW_Q AS SELECT * FROM STG_MATCH_CANDIDATES WHERE score BETWEEN 0.75 AND 0.89;`
+
+---
+
+# 6) **Single Source of Truth** (newest created wins)
+
+```sql
+CREATE OR REPLACE VIEW STG_PERSON_DEDUP AS
+SELECT *
+FROM (
+  SELECT s.*,
+         ROW_NUMBER() OVER (
+           PARTITION BY s.comp_id
+           ORDER BY
+             s.created_at_src DESC,                                       -- newest created date wins
+             CASE NVL(s.email_verified,'N') WHEN 'Y' THEN 0 ELSE 1 END,   -- then verified email
+             CASE WHEN s.email_norm IS NOT NULL THEN 0 ELSE 1 END,        -- then has email
+             CASE s.source_system WHEN 'MYQUEST' THEN 1                   -- source priority (tie-break)
+                                  WHEN 'PRS'     THEN 2
+                                  WHEN 'ECPM'    THEN 3 ELSE 9 END
+         ) rn
+  FROM STG_PERSON s
+) q
+WHERE rn = 1;
+```
+
+Optionally materialize:
+
+```sql
+CREATE TABLE SOT_PERSON AS SELECT * FROM STG_PERSON_DEDUP;
+```
+
+Lineage (who merged into whom):
+
+```sql
+CREATE OR REPLACE VIEW STG_PERSON_XREF AS
+SELECT d.comp_id              AS person_key,
+       d.stg_id               AS survivor_stg_id,
+       s.stg_id               AS member_stg_id,
+       s.source_system,
+       s.source_pk,
+       s.created_at_src
+FROM STG_PERSON d
+JOIN STG_PERSON s
+  ON s.comp_id = d.comp_id
+WHERE d.stg_id IN (SELECT stg_id FROM STG_PERSON_DEDUP);
+```
+
+---
+
+# 7) Quick health checks (for your deck)
+
+```sql
+-- How many raw rows?
+SELECT COUNT(*) AS raw_rows FROM STG_PERSON;
+
+-- How many unique persons after dedup?
+SELECT COUNT(*) AS unique_persons FROM STG_PERSON_DEDUP;
+
+-- Avg cluster size (how many raw per person)
+SELECT ROUND(AVG(members),2) AS avg_rows_per_person
+FROM (
+  SELECT comp_id, COUNT(*) members
+  FROM STG_PERSON
+  GROUP BY comp_id
+);
+
+-- Deterministic links coverage
+SELECT
+  SUM(CASE WHEN key_type='PRS_PROFILE_ID' THEN 1 ELSE 0 END) prs_links,
+  SUM(CASE WHEN key_type='PATIENT_ID'    THEN 1 ELSE 0 END) patient_links
+FROM STG_PERSON_KEYS;
+
+-- Strong fuzzy links count
+SELECT COUNT(*) strong_fuzzy_pairs
+FROM STG_MATCH_CANDIDATES
+WHERE score >= 0.90;
+```
+
+---
+
+## Notes to mention in the meeting
+
+* **Core fuzzy works everywhere:** first name, last name, DOB (present in all 3).
+* **Optional boosts:** email/phone/address used when present (dynamic weights avoid penalizing missing fields).
+* **Deterministic joins first:** `PRS_PROFILE_ID` and `PATIENT_ID` collapse most dupes safely.
+* **Auditable:** Winner chosen by **Created Date**, then verified email, then source priority; full lineage in `STG_PERSON_XREF`.
+
+If you want, I can also supply a one-page architecture diagram (ingest → staging → keys → components → fuzzy → SOT) for your slides.
